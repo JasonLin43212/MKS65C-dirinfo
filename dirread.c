@@ -7,16 +7,38 @@
 #include <sys/stat.h>
 #include <time.h>
 
-int main() {
-  DIR * stream = opendir("some_dir");
-  struct dirent * entry = readdir(stream);
+//check error no
+void print_sizebytes(long bytes){
+  char * names[9] = {"B","KB","MB","GB","TB","PB","EB","ZB","YB"};
+  int sizeofboi = 0;
+  while(bytes > 1000){
+    bytes /= 1000;
+    sizeofboi++;
+  }
+  printf("%ld %s\n",bytes,names[sizeofboi]);
+}
 
-  printf("Statistics for directory: %s\n\n","some_dir");
+//two passes
+void print_dir(char * filename){
+  // First Pass
+  DIR * stream = opendir(filename);
+  struct dirent * entry = readdir(stream);
+  int total_things = 0; // Diretory and files
+
+  while (entry) {
+    total_things++;
+    entry = readdir(stream);
+  }
+
+  stream = opendir(filename);
+  entry = readdir(stream);
+
+  printf("Statistics for directory: %s\n\n",filename);
   int num_directory = 0;
   int num_file = 0;
 
-  char * directory_names[200];
-  char * file_names[200];
+  char * directory_names[total_things];
+  char * file_names[total_things];
 
   int directory_size = 0;
 
@@ -40,7 +62,8 @@ int main() {
   }
   closedir(stream);
 
-  printf("Directories:\nTotal Direcotry Size: %d\n",directory_size);
+  printf("Directories:\nTotal Direcotry Size: ");
+  print_sizebytes(directory_size);
   int i;
   for (i=0;i<num_directory;i++){
     printf("%s\n",directory_names[i]);
@@ -50,5 +73,9 @@ int main() {
     char * current_file_name = file_names[i];
     printf("%s\n",current_file_name);
   }
+}
+
+int main() {
+  print_dir("../MKS65C-stat");
   return 0;
 }
