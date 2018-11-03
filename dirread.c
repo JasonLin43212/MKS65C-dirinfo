@@ -10,6 +10,16 @@
 #include <pwd.h>
 
 //check error no
+
+int length_of_num(long num){
+  int length = 0;
+  while(num>=10){
+    num /= 10;
+    length++;
+  }
+  return length;
+}
+
 void print_sizebytes(long long bytes){
   char * names[9] = {"B","KB","MB","GB","TB","PB","EB","ZB","YB"};
   int sizeofboi = 0;
@@ -44,7 +54,7 @@ void timify(char * old_time, char * output){
   strncpy(output,old_time,13);
 }
 
-long long print_file_details(char * filename){
+long long print_file_details(char * filename, int max_size){
   struct stat file_stat;
   char file_name[strlen(filename)];
   strcpy(file_name,filename);
@@ -58,7 +68,14 @@ long long print_file_details(char * filename){
 
   char time[16] = "";
   timify(ctime(&file_stat.st_atime),time);
-  printf("%s %s %s %ld %s %s",rwx_output,pw->pw_name,gr->gr_name,file_stat.st_size,time,file_name);
+
+  printf("%s %s %s ",rwx_output,pw->pw_name,gr->gr_name);
+
+  int i;
+  for (i=0; i<max_size - length_of_num(file_stat.st_size); i++){
+    printf(" ");
+  }
+  printf("%ld %s %s",file_stat.st_size,time,file_name);
   return file_stat.st_size;
 }
 
@@ -86,6 +103,8 @@ long long print_dir(char * filename, int depth){
 
   long long directory_size = 0;
 
+  int max_filesize_length = 0;
+
   while (entry){
     //It is a directory
     if (entry->d_type == 4) {
@@ -97,6 +116,13 @@ long long print_dir(char * filename, int depth){
       char * current_file_name = entry->d_name;
       file_names[num_file] = current_file_name;
       num_file++;
+
+      struct stat file_stat;
+      stat(current_file_name,&file_stat);
+      int size = length_of_num(file_stat.st_size);
+      if (size > max_filesize_length){
+        max_filesize_length = size;
+      }
     }
     entry = readdir(stream);
   }
@@ -111,11 +137,11 @@ long long print_dir(char * filename, int depth){
     char * current_file_name = file_names[i];
     tree_branch(depth-1);
     printf("|____");
-    print_file_details(current_file_name);
+    print_file_details(current_file_name,max_filesize_length);
     printf("\n");
   }
 
-  printf("Total Direcotry Size: ");
+  printf("Total Directory Size: ");
   print_sizebytes(directory_size);
 
   return directory_size;
