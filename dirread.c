@@ -119,6 +119,7 @@ long long print_dir(char * filename, int depth){
 
       struct stat file_stat;
       stat(current_file_name,&file_stat);
+      directory_size += file_stat.st_size;
       int size = length_of_num(file_stat.st_size);
       if (size > max_filesize_length){
         max_filesize_length = size;
@@ -133,6 +134,7 @@ long long print_dir(char * filename, int depth){
   for (i=0;i<num_directory;i++){
     printf("%s\n",directory_names[i]);
   }
+  printf("\nFiles:\n");
   for (i=0;i<num_file;i++){
     char * current_file_name = file_names[i];
     tree_branch(depth-1);
