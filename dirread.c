@@ -87,13 +87,6 @@ long long print_file_details(char * filename, int max_size){
   return file_stat.st_size;
 }
 
-void printarr(char * * name,int size){
-  int c = 0;
-  for(;c < size;c++){
-    printf("%s \n",name[c]);
-  }
-}
-
 //two passes
 void print_dir(char * filename){
   // First Pass
@@ -114,7 +107,7 @@ void print_dir(char * filename){
   DIR * new_stream = opendir(filename);
   struct dirent * new_entry = readdir(new_stream);
 
-  printf("\nStatistics for directory: %s\n\n",filename);
+  printf("\nStatistics for directory: %s\n",filename);
   int num_directory = 0;
   int num_file = 0;
 
@@ -150,11 +143,8 @@ void print_dir(char * filename){
   closedir(new_stream);
 
   //Sorting
-  char * * new_directory_names = alphaboi(directory_names,num_directory-1);
-  char * * new_file_names = alphaboi(file_names,num_file-1);
-
-  printarr(new_file_names,num_file);
-
+  char * * new_directory_names = alphaboi(directory_names,num_directory);
+  char * * new_file_names = alphaboi(file_names,num_file);
 
   printf("\nDirectories:\n");
   int i;
@@ -173,7 +163,7 @@ void print_dir(char * filename){
     printf("\n");
   }
 
-  printf("Total Directory Size: ");
+  printf("\nTotal Directory Size: ");
   print_sizebytes(directory_size);
 }
 
