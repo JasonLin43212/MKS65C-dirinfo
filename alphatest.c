@@ -13,11 +13,6 @@ void printarr(char * * name,int size){
 
 
 char * * alphaboi(char * * list,int size){
-  char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  char lower[] = "abcdefghijklmnopqrstuvwxyz";
-  char * * temp;
-  temp = malloc(5 * sizeof(char*));
-
   int c = 0;
   int i = 0;
   for(;c < size-1;c++){
