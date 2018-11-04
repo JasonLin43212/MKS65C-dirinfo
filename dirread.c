@@ -20,6 +20,22 @@ int length_of_num(long num){
   return length;
 }
 
+char * * alphaboi(char * * list,int size){
+  int c = 0;
+  int i = 0;
+  for(;c < size-1;c++){
+    for(i = c ;i < size;i++){
+      if(0<strcmp(list[c],list[i])){
+        char * temp = list[c];
+        list[c] = list[i];
+        list[i] = temp;
+      }
+    }
+  }
+
+  return list;
+}
+
 void print_sizebytes(long long bytes){
   char * names[9] = {"B","KB","MB","GB","TB","PB","EB","ZB","YB"};
   int sizeofboi = 0;
@@ -30,23 +46,14 @@ void print_sizebytes(long long bytes){
   printf("%lld %s\n",bytes,names[sizeofboi]);
 }
 
-void tree_branch(int i) {
-  int j;
-  for (j=0; j<i; j++){
-    printf("| ");
-  }
-}
-
 void to_rwx(int permissions, char * output) {
   int i;
-  char temp[10];
   char * possible_rwx [8] = {"---","--x","-w-","-wx","r--","r-x","rw-","rwx"};
   strcat(output,"-");
   for (i=0; i<3; i++){
     strcat(output,possible_rwx[permissions%8]);
     permissions /= 8;
   }
-  strcpy(temp, output);
 }
 
 void timify(char * old_time, char * output){
@@ -76,23 +83,36 @@ long long print_file_details(char * filename, int max_size){
     printf(" ");
   }
   printf("%ld %s %s",file_stat.st_size,time,file_name);
+
   return file_stat.st_size;
 }
 
+void printarr(char * * name,int size){
+  int c = 0;
+  for(;c < size;c++){
+    printf("%s \n",name[c]);
+  }
+}
+
 //two passes
-long long print_dir(char * filename, int depth){
+void print_dir(char * filename){
   // First Pass
   DIR * stream = opendir(filename);
   struct dirent * entry = readdir(stream);
   int total_things = 0; // Diretory and files
+  int max_filename_length = 0;
 
   while (entry) {
     total_things++;
+    int filename_length = strlen(entry->d_name);
+    if (max_filename_length < filename_length){
+      max_filename_length = filename_length;
+    }
     entry = readdir(stream);
   }
 
-  stream = opendir(filename);
-  entry = readdir(stream);
+  DIR * new_stream = opendir(filename);
+  struct dirent * new_entry = readdir(new_stream);
 
   printf("\nStatistics for directory: %s\n\n",filename);
   int num_directory = 0;
@@ -105,15 +125,15 @@ long long print_dir(char * filename, int depth){
 
   int max_filesize_length = 0;
 
-  while (entry){
+  while (new_entry){
     //It is a directory
-    if (entry->d_type == 4) {
-      directory_names[num_directory] = entry->d_name;
+    if (new_entry->d_type == 4) {
+      directory_names[num_directory] = new_entry->d_name;
       num_directory++;
     }
     //It is a file
     else {
-      char * current_file_name = entry->d_name;
+      char * current_file_name = new_entry->d_name;
       file_names[num_file] = current_file_name;
       num_file++;
 
@@ -125,31 +145,39 @@ long long print_dir(char * filename, int depth){
         max_filesize_length = size;
       }
     }
-    entry = readdir(stream);
+    new_entry = readdir(new_stream);
   }
-  closedir(stream);
+  closedir(new_stream);
 
-  printf("\nDirectories:\n ");
+  //Sorting
+  char * * new_directory_names = alphaboi(directory_names,num_directory-1);
+  char * * new_file_names = alphaboi(file_names,num_file-1);
+
+  printarr(new_file_names,num_file);
+
+
+  printf("\nDirectories:\n");
   int i;
   for (i=0;i<num_directory;i++){
-    printf("%s\n",directory_names[i]);
+    printf("%s\n",new_directory_names[i]);
   }
+
   printf("\nFiles:\n");
   for (i=0;i<num_file;i++){
-    char * current_file_name = file_names[i];
-    tree_branch(depth-1);
-    printf("|____");
-    print_file_details(current_file_name,max_filesize_length);
+    if (strcmp(new_file_names[i],"") == 0){
+      print_file_details("README.md",max_filesize_length);
+    }
+    else {
+      print_file_details(new_file_names[i],max_filesize_length);
+    }
     printf("\n");
   }
 
   printf("Total Directory Size: ");
   print_sizebytes(directory_size);
-
-  return directory_size;
 }
 
 int main() {
-  print_dir(".",1);
+  print_dir(".");
   return 0;
 }
