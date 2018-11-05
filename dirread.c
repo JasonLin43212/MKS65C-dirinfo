@@ -8,6 +8,7 @@
 #include <time.h>
 #include <grp.h>
 #include <pwd.h>
+#include <errno.h>
 
 //check error no
 
@@ -63,10 +64,8 @@ void timify(char * old_time, char * output){
 
 long long print_file_details(char * filename, int max_size){
   struct stat file_stat;
-  char file_name[strlen(filename)];
-  strcpy(file_name,filename);
-
   stat(filename,&file_stat);
+
   struct passwd * pw = getpwuid(file_stat.st_uid);
   struct group * gr = getgrgid(file_stat.st_gid);
 
@@ -82,15 +81,26 @@ long long print_file_details(char * filename, int max_size){
   for (i=0; i<max_size - length_of_num(file_stat.st_size); i++){
     printf(" ");
   }
-  printf("%ld %s %s",file_stat.st_size,time,file_name);
+  printf("%ld %s %s",file_stat.st_size,time,filename);
 
   return file_stat.st_size;
+}
+
+void printarr(char * * name,int size){
+  int c = 0;
+  for(;c < size;c++){
+    printf("%s \n",name[c]);
+  }
 }
 
 //two passes
 void print_dir(char * filename){
   // First Pass
   DIR * stream = opendir(filename);
+  if (errno > 0){
+    printf("Error #%d: %s\n",errno,strerror(errno));
+  }
+
   struct dirent * entry = readdir(stream);
   int total_things = 0; // Diretory and files
   int max_filename_length = 0;
@@ -146,6 +156,8 @@ void print_dir(char * filename){
   char * * new_directory_names = alphaboi(directory_names,num_directory);
   char * * new_file_names = alphaboi(file_names,num_file);
 
+  printarr(new_file_names,num_file-1);
+
   printf("\nDirectories:\n");
   int i;
   for (i=0;i<num_directory;i++){
@@ -154,12 +166,13 @@ void print_dir(char * filename){
 
   printf("\nFiles:\n");
   for (i=0;i<num_file;i++){
+    /*
     if (strcmp(new_file_names[i],"") == 0){
       print_file_details("README.md",max_filesize_length);
     }
-    else {
+    else {*/
       print_file_details(new_file_names[i],max_filesize_length);
-    }
+      //}
     printf("\n");
   }
 
@@ -167,7 +180,8 @@ void print_dir(char * filename){
   print_sizebytes(directory_size);
 }
 
-int main() {
+//argc should be 1 cuz that is the filename
+int main(int argc, char * argv[]) {
   print_dir(".");
   return 0;
 }
