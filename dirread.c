@@ -94,11 +94,12 @@ void printarr(char * * name,int size){
 }
 
 //two passes
-void print_dir(char * filename){
+void print_dir(char * dir_name){
   // First Pass
-  DIR * stream = opendir(filename);
+  DIR * stream = opendir(dir_name);
   if (errno > 0){
-    printf("Error #%d: %s\n",errno,strerror(errno));
+    printf("Error #%d: %s\n\n",errno,strerror(errno));
+    exit(0);
   }
 
   struct dirent * entry = readdir(stream);
@@ -114,39 +115,48 @@ void print_dir(char * filename){
     entry = readdir(stream);
   }
 
-  DIR * new_stream = opendir(filename);
+  DIR * new_stream = opendir(dir_name);
   struct dirent * new_entry = readdir(new_stream);
 
-  printf("\nStatistics for directory: %s\n",filename);
+  printf("\nStatistics for directory: %s\n",dir_name);
   int num_directory = 0;
   int num_file = 0;
 
-  char * directory_names[total_things];
-  char * file_names[total_things];
+  char * * directory_names = calloc(total_things,sizeof(char *));
+  char * * file_names = calloc(total_things,sizeof(char *));
 
   long long directory_size = 0;
 
   int max_filesize_length = 0;
 
   while (new_entry){
+    char * current_file_name = malloc(255);
+    sprintf(current_file_name,"%s",new_entry->d_name);
+
+    char * current_file_path = malloc(4096);
+    sprintf(current_file_path,"%s/%s",dir_name,new_entry->d_name);
+
+    struct stat file_stat;
+    if (stat(current_file_path,&file_stat) == 0){
+      int size = length_of_num(file_stat.st_size);
+      if (size > max_filesize_length){
+        max_filesize_length = size;
+      }
+    }
+    else{
+      printf("Error #%d: %s\n\n",errno,strerror(errno));
+      exit(1);
+    }
     //It is a directory
-    if (new_entry->d_type == 4) {
+    if (S_ISDIR(file_stat.st_mode)) {
       directory_names[num_directory] = new_entry->d_name;
       num_directory++;
     }
     //It is a file
     else {
-      char * current_file_name = new_entry->d_name;
       file_names[num_file] = current_file_name;
-      num_file++;
-
-      struct stat file_stat;
-      stat(current_file_name,&file_stat);
       directory_size += file_stat.st_size;
-      int size = length_of_num(file_stat.st_size);
-      if (size > max_filesize_length){
-        max_filesize_length = size;
-      }
+      num_file++;
     }
     new_entry = readdir(new_stream);
   }
@@ -156,8 +166,6 @@ void print_dir(char * filename){
   char * * new_directory_names = alphaboi(directory_names,num_directory);
   char * * new_file_names = alphaboi(file_names,num_file);
 
-  printarr(new_file_names,num_file-1);
-
   printf("\nDirectories:\n");
   int i;
   for (i=0;i<num_directory;i++){
@@ -165,15 +173,16 @@ void print_dir(char * filename){
   }
 
   printf("\nFiles:\n");
-  for (i=0;i<num_file;i++){
-    /*
+  for (i=0;i<num_file-1;i++){
+
     if (strcmp(new_file_names[i],"") == 0){
       print_file_details("README.md",max_filesize_length);
     }
-    else {*/
+    else {
       print_file_details(new_file_names[i],max_filesize_length);
-      //}
+    }
     printf("\n");
+
   }
 
   printf("\nTotal Directory Size: ");
@@ -182,6 +191,15 @@ void print_dir(char * filename){
 
 //argc should be 1 cuz that is the filename
 int main(int argc, char * argv[]) {
-  print_dir(".");
+  if (argc == 1) {
+    printf("Hello, to run this program, please type this with args separated by spaces:\n\n\tmake all run args=\"<directory_path_1> <directory_path_2> ...\"\n\n");
+  }
+  else {
+    int i=1;
+    while(i < argc){
+      print_dir(argv[i]);
+      i++;
+    }
+  }
   return 0;
 }

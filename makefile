@@ -5,8 +5,7 @@ dirread.o: dirread.c
 	gcc -c dirread.c
 
 run:
-	./a.out
+	./a.out $(args)
 
 clear:
 	rm *.o
-
