@@ -12,7 +12,8 @@
 
 void check_error(){
   if (errno > 0){
-    printf("Error %d: %s\n\n",errno,strerror(errno));
+    printf("Error %d: %s\nAlso, please remove temporary files!\nYou can check for temporary files by typing: ls -al\n",
+           errno,strerror(errno));
     exit(0);
   }
 }
@@ -137,7 +138,6 @@ void print_dir(char * dir_path){
   free(entry);
 
   int i;
-
   for (i=0; i<num_files; i++){
     print_file_details(file_names[i],dir_path,max_filesize_length,max_user_length,max_group_length);
   }
