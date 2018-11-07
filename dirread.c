@@ -10,7 +10,12 @@
 #include <pwd.h>
 #include <errno.h>
 
-//check error no
+void check_error(){
+  if (errno > 0){
+    printf("Error %d: %s\n\n",errno,strerror(errno));
+    exit(0);
+  }
+}
 
 int length_of_num(long num){
   int length = 0;
@@ -21,175 +26,127 @@ int length_of_num(long num){
   return length;
 }
 
-char * * alphaboi(char * * list,int size){
-  int c = 0;
-  int i = 0;
-  for(;c < size-1;c++){
-    for(i = c ;i < size;i++){
-      if(0<strcmp(list[c],list[i])){
-        char * temp = list[c];
-        list[c] = list[i];
-        list[i] = temp;
-      }
-    }
-  }
-
-  return list;
-}
-
 void print_sizebytes(long long bytes){
+  long long original = bytes;
   char * names[9] = {"B","KB","MB","GB","TB","PB","EB","ZB","YB"};
   int sizeofboi = 0;
   while(bytes > 1000){
     bytes /= 1000;
     sizeofboi++;
   }
-  printf("%lld %s\n",bytes,names[sizeofboi]);
+  printf("%lld %s or %lld bytes\n",bytes,names[sizeofboi],original);
 }
 
-void to_rwx(int permissions, char * output) {
-  int i;
-  char * possible_rwx [8] = {"---","--x","-w-","-wx","r--","r-x","rw-","rwx"};
-  strcat(output,"-");
-  for (i=0; i<3; i++){
-    strcat(output,possible_rwx[permissions%8]);
-    permissions /= 8;
-  }
-}
+void print_file_details(char * file_name, char * dir_path, int max_size, int max_user, int max_group) {
+  char file_path[4096];
+  sprintf(file_path,"%s/%s",dir_path,file_name);
 
-void timify(char * old_time, char * output){
-  old_time += 3;
-  strncpy(output,old_time,13);
-}
-
-long long print_file_details(char * filename, int max_size){
   struct stat file_stat;
-  stat(filename,&file_stat);
+  stat(file_path,&file_stat);
+  check_error();
 
-  struct passwd * pw = getpwuid(file_stat.st_uid);
-  struct group * gr = getgrgid(file_stat.st_gid);
+  S_ISDIR(file_stat.st_mode) ? printf("d") : printf("-");
+  char * rwx [8] = {"---","--x","-w-","-wx","r--","r-x","rw-","rwx"};
+  int permissions = file_stat.st_mode;
+  int other = permissions % 8;
+  permissions /= 8;
+  int group = permissions % 8;
+  permissions /= 8;
+  int user = permissions % 8;
+  printf("%s%s%s ",rwx[user],rwx[group],rwx[other]);
 
-  char rwx_output[12] = "";
-  to_rwx(file_stat.st_mode, rwx_output);
+  printf("%-*s %-*s ",
+         max_user,
+         getpwuid(file_stat.st_uid)->pw_name,
+         max_group,
+         getgrgid(file_stat.st_gid)->gr_name);
 
-  char time[16] = "";
-  timify(ctime(&file_stat.st_atime),time);
+  printf("%*ld",max_size+1,file_stat.st_size);
 
-  printf("%s %s %s ",rwx_output,pw->pw_name,gr->gr_name);
-
-  int i;
-  for (i=0; i<max_size - length_of_num(file_stat.st_size); i++){
-    printf(" ");
-  }
-  printf("%ld %s %s",file_stat.st_size,time,filename);
-
-  return file_stat.st_size;
+  char time[16];
+  strncpy(time,ctime(&file_stat.st_atime)+3,13);
+  printf("%s %s\n",time,file_name);
 }
 
-void printarr(char * * name,int size){
-  int c = 0;
-  for(;c < size;c++){
-    printf("%s \n",name[c]);
-  }
-}
-
-//two passes
-void print_dir(char * dir_name){
-  // First Pass
-  DIR * stream = opendir(dir_name);
-  if (errno > 0){
-    printf("Error #%d: %s\n\n",errno,strerror(errno));
-    exit(0);
-  }
+void print_dir(char * dir_path){
+  DIR * stream = opendir(dir_path);
+  check_error();
 
   struct dirent * entry = readdir(stream);
-  int total_things = 0; // Diretory and files
+  check_error();
+
+  int total_things = 0;
   int max_filename_length = 0;
 
   while (entry) {
-    total_things++;
     int filename_length = strlen(entry->d_name);
-    if (max_filename_length < filename_length){
+    if (max_filename_length < filename_length) {
       max_filename_length = filename_length;
     }
+    total_things++;
     entry = readdir(stream);
+    check_error();
   }
 
-  DIR * new_stream = opendir(dir_name);
-  struct dirent * new_entry = readdir(new_stream);
+  stream = opendir(dir_path);
+  check_error();
+  entry = readdir(stream);
+  check_error();
 
-  printf("\nStatistics for directory: %s\n",dir_name);
-  int num_directory = 0;
-  int num_file = 0;
-
-  char * * directory_names = calloc(total_things,sizeof(char *));
-  char * * file_names = calloc(total_things,sizeof(char *));
-
-  long long directory_size = 0;
-
+  printf("\nStatistics for directory: %s\n",dir_path);
+  int num_files = 0;
   int max_filesize_length = 0;
+  int max_user_length = 0;
+  int max_group_length = 0;
+  long long directory_size = 0;
+  char file_names[total_things][256];
 
-  while (new_entry){
-    char * current_file_name = malloc(255);
-    sprintf(current_file_name,"%s",new_entry->d_name);
+  while (entry) {
+    char current_path[4096];
+    sprintf(current_path,"%s/%s",dir_path,entry->d_name);
 
-    char * current_file_path = malloc(4096);
-    sprintf(current_file_path,"%s/%s",dir_name,new_entry->d_name);
-
-    struct stat file_stat;
-    if (stat(current_file_path,&file_stat) == 0){
-      int size = length_of_num(file_stat.st_size);
+    struct stat cur_stat;
+    if (stat(current_path,&cur_stat) == 0) {
+      int size = length_of_num(cur_stat.st_size);
       if (size > max_filesize_length){
         max_filesize_length = size;
       }
+      int user_length = strlen(getpwuid(cur_stat.st_uid)->pw_name);
+      if (user_length > max_user_length){
+        max_user_length = user_length;
+      }
+      int group_length = strlen(getgrgid(cur_stat.st_gid)->gr_name);
+      if (group_length > max_group_length){
+        max_group_length = group_length;
+      }
+
+      strcpy(file_names[num_files],entry->d_name);
+      if (!S_ISDIR(cur_stat.st_mode)) {
+         directory_size += cur_stat.st_size;
+      }
+      num_files++;
+      entry = readdir(stream);
+      check_error();
     }
-    else{
-      printf("Error #%d: %s\n\n",errno,strerror(errno));
-      exit(1);
-    }
-    //It is a directory
-    if (S_ISDIR(file_stat.st_mode)) {
-      directory_names[num_directory] = new_entry->d_name;
-      num_directory++;
-    }
-    //It is a file
     else {
-      file_names[num_file] = current_file_name;
-      directory_size += file_stat.st_size;
-      num_file++;
+      check_error();
     }
-    new_entry = readdir(new_stream);
   }
-  closedir(new_stream);
 
-  //Sorting
-  char * * new_directory_names = alphaboi(directory_names,num_directory);
-  char * * new_file_names = alphaboi(file_names,num_file);
+  closedir(stream);
+  free(entry);
 
-  printf("\nDirectories:\n");
   int i;
-  for (i=0;i<num_directory;i++){
-    printf("%s\n",new_directory_names[i]);
-  }
 
-  printf("\nFiles:\n");
-  for (i=0;i<num_file-1;i++){
-
-    if (strcmp(new_file_names[i],"") == 0){
-      print_file_details("README.md",max_filesize_length);
-    }
-    else {
-      print_file_details(new_file_names[i],max_filesize_length);
-    }
-    printf("\n");
-
+  for (i=0; i<num_files; i++){
+    print_file_details(file_names[i],dir_path,max_filesize_length,max_user_length,max_group_length);
   }
 
   printf("\nTotal Directory Size: ");
   print_sizebytes(directory_size);
+  printf("\n");
 }
 
-//argc should be 1 cuz that is the filename
 int main(int argc, char * argv[]) {
   if (argc == 1) {
     printf("Hello, to run this program, please type this with args separated by spaces:\n\n\tmake all run args=\"<directory_path_1> <directory_path_2> ...\"\n\n");
